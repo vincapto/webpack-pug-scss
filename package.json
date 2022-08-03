@@ -1,5 +1,5 @@
 {
-  "name": "webpack-template",
+  "name": "simple-layout",
   "version": "1.0.0",
   "description": "Basic configuration of Webpack",
   "main": "index.js",
