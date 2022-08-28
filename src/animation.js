@@ -84,19 +84,6 @@ class AnimateDrag {
   //     });
   //   }
   // }
-  moveDragElement(mouseEvent, cell = {}) {
-    if (this.isDraggable) {
-      const currentPoint = this.getDifference({ x: mouseEvent.clientX, y: mouseEvent.clientY }, this.dragArea);
-      // const axis = this.getAxis(mouseEvent, currentPoint);
-      // console.log(axis);
-      const position = this.Axis.x
-        ? { x: currentPoint.x - this.startPosition.x, y: this.startCell.y }
-        : this.Axis.y
-        ? { y: currentPoint.y - this.startPosition.y, x: this.startCell.x }
-        : null;
-      if (position !== null) this.setElementPosition(this.dragElement, position);
-    }
-  }
 
   checkIsCrossing(element, drop) {
     return (
@@ -151,30 +138,71 @@ class AnimateDrag {
     };
   }
 
-  watchCrossingList() {
+  getAvailableCoord(currentCell) {
+    const cell = currentCell.item.getBoundingClientRect();
+    const emptyCell = this.emptyCell.item.getBoundingClientRect();
+    return {
+      left: cell.left <= emptyCell.left ? cell.left : emptyCell.left,
+      right: cell.right >= emptyCell.right ? cell.right : emptyCell.right,
+      top: cell.top <= emptyCell.top ? cell.top : emptyCell.top,
+      bottom: cell.bottom >= emptyCell.bottom ? cell.bottom : emptyCell.bottom,
+    };
+  }
+
+  // checkAvailablePoints(coord, frame) {
+  //   return coord.y > frame.top && coord.y < frame.bottom && coord.x > frame.left && coord.x < frame.right;
+  // }
+  checkAvailablePoints(coord, frame, axis) {
+    // return coord.top > frame.top && coord.bottom < frame.bottom && coord.left > frame.left && coord.right < frame.right;
+    return axis
+      ? coord.top > frame.top && coord.bottom < frame.bottom
+      : coord.left > frame.left && coord.right < frame.right;
+  }
+
+  cellFrame = {};
+
+  moveDragElement(mouseEvent, cell = {}) {
+    if (this.isDraggable) {
+      const currentPoint = this.getDifference({ x: mouseEvent.clientX, y: mouseEvent.clientY }, this.dragArea);
+      // this.dragDropZone[this.startParent].getBoundingClientRect();
+
+      // console.log(this.shiftMouseParent);
+
+      const position = this.Axis.x
+        ? { x: currentPoint.x - this.startPosition.x, y: this.startCell.y }
+        : this.Axis.y
+        ? { x: this.startCell.x, y: currentPoint.y - this.startPosition.y }
+        : null;
+      const positionSubShift = {
+        // x: this.shiftMouseParent.x + 10,
+        // y: this.shiftMouseParent.y + 10,
+        // x: currentPoint.x + this.shiftMouseParent.x + 10,
+        left: mouseEvent.clientX - this.shiftMouseParent.left,
+        right: mouseEvent.clientX + this.shiftMouseParent.right,
+        top: mouseEvent.y - this.shiftMouseParent.top,
+        bottom: mouseEvent.clientY + this.shiftMouseParent.bottom,
+      };
+      // if (!this.checkAvailablePoints(positionSubShift, this.cellFrame)) console.table(positionSubShift);
+
+      if (position !== null && this.checkAvailablePoints(positionSubShift, this.cellFrame, this.Axis.y))
+        this.setElementPosition(this.dragElement, position);
+    }
+  }
+  watchCrossingList(mouseEvent) {
     const dragId = this.getDragElement();
     const drag = this.dragElementList[dragId];
     const element = this.dragElement.getBoundingClientRect();
+    this.moveDragElement(mouseEvent);
     const collision = this.dragDropZone.filter(({ item }) => {
       return this.checkIsCrossing(element, item.getBoundingClientRect()) && this.dragElement !== item;
     })[0];
     if (collision && this.isDraggable) {
       if (collision.nestedId !== null) return;
-      // console.log(collision.item);
-      // if (this.checkIsContainsTransition(collision)) return;
+
       const parentId = drag.parentId;
       collision.nestedId = drag.id;
       drag.parentId = collision.id;
       this.dragDropZone[parentId].nestedId = null;
-
-      // if (!this.checkIsContainsTransition(collision)) {
-
-      // console.log(elementRect - cellBOund);
-      // console.log(coordPos);
-      if (true) {
-        // this.setElementPosition(drag.item, { x: xRect - xCell, y: yRect - yCell + style });
-        // this.setSingleTransition(collision);
-      }
     }
   }
 
@@ -199,6 +227,7 @@ class AnimateDrag {
   startCell = {};
   Axis = false;
   startParent;
+  shiftMouseParent = 0;
   startDragElementList(mouseDown, target) {
     this.dragElement = target;
     const startId = this.dragElementList.filter((a) => a.item === this.dragElement)[0].id;
@@ -206,14 +235,22 @@ class AnimateDrag {
     this.Axis = this.getAxis(mouseDown, currentPoint);
     console.log('AXIS', this.Axis);
     this.startParent = this.dragElementList[startId].parentId;
+    this.shiftMouseParent = {
+      left: mouseDown.clientX - this.dragDropZone[this.startParent].item.getBoundingClientRect().left - 10,
+      right: this.dragDropZone[this.startParent].item.getBoundingClientRect().right - mouseDown.clientX - 10,
+      bottom: this.dragDropZone[this.startParent].item.getBoundingClientRect().bottom - mouseDown.clientY - 10,
+      top: mouseDown.clientY - this.dragDropZone[this.startParent].item.getBoundingClientRect().top - 10,
+    };
+    // const buff = mouseEvent.clientX - boundariesParent.left;
     // console.log('START PARENT', startParent);
     this.startCell = this.getDistanceRectCoord(this.dragDropZone[this.startParent].item, this.dragElement);
     mouseDown.preventDefault();
     this.isDraggable = true;
     this.setStartPosition(mouseDown);
+    this.cellFrame = this.getAvailableCoord(this.dragDropZone[this.startParent]);
     this.dragArea.addEventListener('mousemove', (mouseMove) => {
-      this.moveDragElement(mouseMove);
-      this.watchCrossingList();
+      // this.moveDragElement(mouseMove);
+      this.watchCrossingList(mouseMove);
       this.dragElement.addEventListener('mouseup', (mouseUp) => {
         if (this.isDraggable) {
           this.isDraggable = false;
