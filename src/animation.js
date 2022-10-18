@@ -2,6 +2,8 @@ class AnimateDrag {
   isDraggable = false;
   puzzleRowLength = 4;
   puzzleLength = 16;
+  movesCount = 0;
+  movesCountElement;
   grabAnimationClass = [['move-grab'], ['move-transition']];
   transitionListClass = 'move-list-item';
   elementInitialState = { x: 0, y: 0 };
@@ -15,6 +17,7 @@ class AnimateDrag {
   startParent;
   shiftMouseParent = 0;
   cellFrame = {};
+  saveList = [];
 
   getDivideRest(num) {
     const div = this.puzzleRowLength;
@@ -53,6 +56,7 @@ class AnimateDrag {
       return a.id - b.id;
     });
     console.table(sortedList);
+    this.saveList = sortedList;
     sortedList.some((a, key) => {
       return a.id === this.dragDropZone[key];
     });
@@ -235,11 +239,25 @@ class AnimateDrag {
     }
   }
 
-  setDefaultPosition() {
+  setDefaultPosition(loadList = []) {
+    const isLoaded = loadList.length !== 0;
+    this.dragElementList.forEach((item, key) => {
+      const parentId = isLoaded ? loadList[key] : key;
+      this.setElementPosition(
+        item.item,
+        this.getDistanceRectCoord(this.getParentCell(parentId).item, item.item)
+      );
+    });
+  }
+
+  setResizePosition() {
     this.dragElementList.forEach((item, key) => {
       this.setElementPosition(
         item.item,
-        this.getDistanceRectCoord(this.getParentCell(key).item, item.item)
+        this.getDistanceRectCoord(
+          this.getParentCell(item.parentId).item,
+          item.item
+        )
       );
     });
   }
@@ -272,8 +290,13 @@ class AnimateDrag {
     mouseDown.preventDefault();
     this.setStartPosition(mouseDown);
     this.dragArea.addEventListener('mousemove', (mouseMove) => {
-      if (!this.getAvailableCells(this.emptyCell.id).includes(this.startParent))
+      if (
+        !this.getAvailableCells(this.emptyCell.id).includes(this.startParent)
+      ) {
+        // console.log('_____-------NOU');
         return;
+      }
+      // console.log('AVALIBALE');
       this.watchCrossingList(mouseMove);
     });
     this.dragElement.addEventListener('mouseleave', this.dropListener, {
@@ -307,6 +330,8 @@ class AnimateDrag {
     if (element.parentId !== this.startParent) {
       this.emptyCell = this.getParentCell();
       this.getParentCell().nestedId = null;
+      this.movesCount++;
+      this.movesCountElement(this.movesCount);
     }
   }
 }

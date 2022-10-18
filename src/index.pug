@@ -4,6 +4,27 @@ doctype html
 html(lang='en')
   meta(name="viewport" content="width=device-width, initial-scale=1")
   body
-  button.btn
+  .controlBar
+    button.btn.controlReset Start/Reset
+    select(name="frameSize").controlSelect
+      option(value=3) 3
+      option(selected value=4) 4
+      option(value=5) 5
+      option(value=6) 6
+      option(value=7) 7
+      option(value=8) 8
+    label(for="sound" class='player' ) Sound
+      input(id='soundCheck' type="checkbox" checked)
+    button.btn.controlSave Save
+    button.btn.controlLoad Load
+    button.btn.controlInfo Info
+  audio(id="myAudio")
+    source(src="./swing-whoosh-110410.mp3" type="audio/ogg")
+  .board 
+    .movesCount Moves 0
+    .timer
+      span.hours 00
+      span.minutes 00
+      span.seconds 00
   .container
     .puzzle__list

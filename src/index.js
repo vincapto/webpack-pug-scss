@@ -1,10 +1,11 @@
 import './styles/index.scss';
+import { startCount, clearCount } from './timer';
 import { AnimateDrag } from './animation.js';
 
 const createPuzzleItem = (className = '', order = 0) => {
   return `
     <div class='puzzle__item${className}' data-order=${order}>
-    ${order}
+    <p>${order + 1}</p>
     </div>
   `;
 };
@@ -31,81 +32,181 @@ const createPuzzleItemList = (array) => {
   });
 };
 
-const arrayLength = 9;
+const selectSize = document.querySelector('.controlSelect');
+const resetButton = document.querySelector('.controlReset');
+const saveButton = document.querySelector('.controlSave');
+const loadButton = document.querySelector('.controlLoad');
+const movesCountElement = document.querySelector('.movesCount');
+const soundCheck = document.querySelector('#soundCheck');
+const moveSound = document.getElementById('myAudio');
+
+let animateDrag = null;
+
+let saveListItems = [];
+moveSound.playbackRate = 1.4;
+
+saveButton.addEventListener('click', () => {
+  saveGame('');
+});
+
+loadButton.addEventListener('click', () => {
+  loadGame('');
+});
+
+function playAudio() {
+  soundCheck.checked ? moveSound.play() : 0;
+}
+
+let arrayLength = 16;
+
+selectSize.addEventListener('change', (event) => {
+  arrayLength = event.target.value ** 2;
+  setGame();
+  console.log(arrayLength);
+});
+
+resetButton.addEventListener('click', (event) => {
+  console.log('RESET');
+  setGame();
+  startCount();
+});
+
+function fisherShuffle(arr) {
+  let i = arr.length;
+  while (--i > 0) {
+    let randIndex = Math.floor(Math.random() * (i + 1));
+    [arr[randIndex], arr[i]] = [arr[i], arr[randIndex]];
+  }
+  return arr;
+}
+
 function shuffleArray(arrayLength) {
   const array = Array(arrayLength)
     .fill(0)
     .map((_, key) => key);
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
+  return fisherShuffle(array);
 }
 
-const shuffledArray = shuffleArray(arrayLength - 1);
-
-const puzzleListArr = createPuzzleItemCell(arrayLength);
-puzzleListArr[0] = createPuzzleCell(
-  [...createPuzzleItemList(shuffledArray)],
-  0
-);
-const puzzleListElement = document.querySelector('.puzzle__list');
-puzzleListElement.innerHTML = [...puzzleListArr].toString().replaceAll(',', '');
-
-const puzzleListItem = document.querySelectorAll('.puzzle__item');
-const puzzleListCell = document.querySelectorAll('.puzzle__cell');
-
-const puzzleItemObjArr = [...puzzleListItem].map((item, key) => {
-  return { item, parentId: key, id: Number(item.dataset.order) };
-});
-
-const puzzleCellObjArr = [...puzzleListCell].map((item, key) => {
-  const nested = puzzleItemObjArr[key] ? puzzleItemObjArr[key].id : null;
-  return { item, nestedId: nested, id: key };
-});
-
-// console.table(puzzleItemObjArr);
-// console.table(puzzleCellObjArr);
-
-const animateDrag = new AnimateDrag(
-  puzzleListElement,
-  [...puzzleCellObjArr],
-  puzzleItemObjArr
-);
-puzzleCellObjArr.at(-1).nestedId = null;
-animateDrag.emptyCell = puzzleCellObjArr.at(-1);
-
-animateDrag.setDefaultPosition();
-animateDrag.puzzleRowLength = 3;
-animateDrag.puzzleLength = 9;
-puzzleListItem.forEach((item, key) => {
-  // item.style.zIndex = key;
-  // console.log('INITIAL ID START', animateDrag.startPosition.initialId);
-  console.log(item);
-  item.addEventListener('mousedown', (e) => {
-    console.log('CLIVK');
-    animateDrag.startDragElementList(e, item);
+const checkVictory = (list) => {
+  console.log(Array.isArray(list));
+  const isVictory = list.every((a) => {
+    console.log('ON PLACE', a.id === a.parentId);
+    if (a.id === arrayLength.length - 1) return true;
+    return a.id === a.parentId;
   });
-  item.addEventListener('resize', (e) => {
-    animateDrag.startDragElementList(e, item);
-    // console.log(item);
-  });
-});
-
-window.addEventListener('resize', function (event) {
-  // do stuff here
-});
-
-const obj = {
-  first: 1,
-  second: 2,
-  // third,
+  return isVictory;
 };
 
-if (obj) {
-  console.log('OBJ', obj);
-  if (!!obj.first) console.log('PROP', obj.first);
-  if (obj?.third) console.log('PROP', obj?.third);
-  // if (obj?.first) console.log('PROP', obj.second);
-}
+const puzzleListElement = document.querySelector('.puzzle__list');
+
+const setGridStyle = (count = 3) => {
+  return `grid-template-columns: repeat(${count}, 1fr);
+    grid-template-rows: repeat(${count}, 1fr);font-size:${90 / count}px;`;
+};
+
+const saveGame = (itemList) => {
+  if (animateDrag.saveList.length !== null) {
+    const sort = animateDrag.saveList.map((a) => {
+      return a.parentId;
+    });
+    console.log('EMPTY', animateDrag.emptyCell);
+    localStorage.setItem('itemList', JSON.stringify(sort));
+    localStorage.setItem('timer', JSON.stringify(getTimerValue));
+    localStorage.setItem('moves', JSON.stringify(animateDrag.movesCount));
+    localStorage.setItem('emptyCell', JSON.stringify(animateDrag.emptyCell.id));
+  }
+};
+
+const loadGame = () => {
+  const loaded = JSON.parse(localStorage.getItem('itemList'));
+  const emptyCell = JSON.parse(localStorage.getItem('emptyCell'));
+  console.log(emptyCell);
+  setGame(loaded, emptyCell);
+};
+
+const changeMoveElement = (count) => {
+  movesCountElement.innerHTML = `Moves ${count}`;
+};
+
+const setGame = (loadedGame = [], empty = null) => {
+  const shuffledArray =
+    loadedGame.length !== 0
+      ? Array(arrayLength)
+          .fill(0)
+          .map((_, key) => key)
+      : shuffleArray(arrayLength);
+  console.table(shuffledArray);
+  puzzleListElement.setAttribute('style', setGridStyle(Math.sqrt(arrayLength)));
+  const puzzleListArr = createPuzzleItemCell(arrayLength);
+
+  puzzleListArr[0] = createPuzzleCell(
+    [...createPuzzleItemList(shuffledArray)],
+    0
+  );
+
+  puzzleListElement.innerHTML = [...puzzleListArr]
+    .toString()
+    .replaceAll(',', '');
+
+  const puzzleListItem = document.querySelectorAll('.puzzle__item');
+  const puzzleListCell = document.querySelectorAll('.puzzle__cell');
+
+  const findLast = (list) => {
+    const element = list.find((a) => a.id === arrayLength - 1);
+    return list.indexOf(element);
+  };
+
+  console.log('GAME SET');
+  const puzzleItemObjArr = [...puzzleListItem].map((item, key) => {
+    const isLoaded = loadedGame.length !== 0;
+    const parentId = isLoaded ? loadedGame[key] : key;
+    return { item, parentId: parentId, id: Number(item.dataset.order) };
+  });
+
+  const puzzleCellObjArr = [...puzzleListCell].map((item, key) => {
+    const nested = puzzleItemObjArr[key] ? puzzleItemObjArr[key].id : null;
+    return { item, nestedId: puzzleItemObjArr[key].id, id: key };
+  });
+
+  const lastElementIndex =
+    loadedGame.length !== 0 ? empty : findLast(puzzleItemObjArr);
+
+  animateDrag = new AnimateDrag(
+    puzzleListElement,
+    [...puzzleCellObjArr],
+    puzzleItemObjArr
+  );
+
+  animateDrag.movesCountElement = changeMoveElement;
+
+  puzzleCellObjArr.at(lastElementIndex).nestedId = null;
+  puzzleItemObjArr[findLast(puzzleItemObjArr)].item.classList.add('hide');
+
+  animateDrag.emptyCell = empty
+    ? puzzleCellObjArr.at(empty)
+    : puzzleCellObjArr.at(lastElementIndex);
+
+  console.log('SET EMPTY', animateDrag.emptyCell);
+  animateDrag.setDefaultPosition(loadedGame);
+  animateDrag.puzzleRowLength = Math.sqrt(arrayLength);
+  animateDrag.puzzleLength = arrayLength;
+  puzzleListItem.forEach((item, key) => {
+    item.addEventListener('mousedown', (e) => {
+      playAudio();
+      animateDrag.startDragElementList(e, item);
+      // movesCountElement.innerHTML = animateDrag.movesCount;
+      if (checkVictory(puzzleItemObjArr)) {
+        alert('VICTORY');
+      }
+    });
+  });
+
+  window.addEventListener('resize', function (event) {
+    if (puzzleListElement.clientWidth < 1100) {
+      console.log('LESS');
+      animateDrag.setResizePosition();
+    } else console.log('more');
+  });
+};
+
+// setGame();
