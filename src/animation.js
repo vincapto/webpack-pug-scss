@@ -30,7 +30,8 @@ class AnimateDrag {
 
   getAvailableCells(key) {
     const arr = [];
-    if (key + this.puzzleRowLength <= this.puzzleLength) arr.push(key + this.puzzleRowLength);
+    if (key + this.puzzleRowLength <= this.puzzleLength)
+      arr.push(key + this.puzzleRowLength);
     if (key - this.puzzleRowLength >= 0) arr.push(key - this.puzzleRowLength);
     arr.push(...this.getDivideRest(key));
     return arr;
@@ -47,23 +48,51 @@ class AnimateDrag {
     this.grabAnimationClass = grabClass;
   }
 
-  setInitInitialState() {
-    this.elementInitialState = { x: this.dragElement.offsetLeft, y: dragElement.offsetTop };
+  checkSequence() {
+    const sortedList = this.dragElementList.sort((a, b) => {
+      return a.id - b.id;
+    });
+    console.table(sortedList);
+    sortedList.some((a, key) => {
+      return a.id === this.dragDropZone[key];
+    });
   }
+
+  setInitInitialState() {
+    this.elementInitialState = {
+      x: this.dragElement.offsetLeft,
+      y: dragElement.offsetTop,
+    };
+  }
+
   setStartPosition(mouseDown) {
-    const entry = this.getDifference({ x: mouseDown.clientX, y: mouseDown.clientY }, this.dragArea);
-    entry.y += this.dragElement.offsetTop - this.dragElement.style.top.replace('px', '');
+    const entry = this.getDifference(
+      { x: mouseDown.clientX, y: mouseDown.clientY },
+      this.dragArea
+    );
+    entry.y +=
+      this.dragElement.offsetTop - this.dragElement.style.top.replace('px', '');
     this.startPosition = this.getDifference(entry, this.dragElement);
     this.startPosition.offsetTop = this.dragElement.offsetTop;
     this.Axis = this.getAxis(
       mouseDown,
-      this.getDifference({ x: mouseDown.clientX, y: mouseDown.clientY }, this.dragArea)
+      this.getDifference(
+        { x: mouseDown.clientX, y: mouseDown.clientY },
+        this.dragArea
+      )
     );
-    this.startParent = this.dragElementList[this.getDragElementId()].parentId;
+    this.startParent = this.findDragElement().parentId;
     this.setDraggableBorders(mouseDown);
-    this.startCell = this.getDistanceRectCoord(this.dragDropZone[this.startParent].item, this.dragElement);
-    this.cellFrame = this.getAvailableCoord(this.dragDropZone[this.startParent]);
+    this.startCell = this.getDistanceRectCoord(
+      this.getParentCell().item,
+      this.dragElement
+    );
+    this.cellFrame = this.getAvailableCoord(this.getParentCell());
     this.isDraggable = true;
+  }
+
+  getParentCell(index = this.startParent) {
+    return this.dragDropZone[index];
   }
 
   setElementPosition(element, { x, y }) {
@@ -71,7 +100,11 @@ class AnimateDrag {
     element.style.top = y + 'px';
   }
 
-  toggleElementClass(item, reverse = false, [add, remove] = this.grabAnimationClass) {
+  toggleElementClass(
+    item,
+    reverse = false,
+    [add, remove] = this.grabAnimationClass
+  ) {
     [add, remove] = !reverse ? [add, remove] : [remove, add];
     item.classList.add(...add);
     item.classList.remove(...remove);
@@ -107,12 +140,15 @@ class AnimateDrag {
     return element.item.classList.contains(className);
   }
 
-  getDragElementId() {
-    return this.dragElementList.filter((a) => a.item === this.dragElement)[0].id;
+  findDragElement() {
+    return this.dragElementList.find((a) => a.item === this.dragElement);
   }
 
   getDistanceRectCoord(...param) {
-    return { x: this.getDistanceRect(...param, 'left'), y: this.getDistanceRect(...param) };
+    return {
+      x: this.getDistanceRect(...param, 'left'),
+      y: this.getDistanceRect(...param),
+    };
   }
 
   getDistanceRect(cell, element, prop = 'top') {
@@ -155,7 +191,10 @@ class AnimateDrag {
 
   moveDragElement(mouseEvent, cell = {}) {
     if (this.isDraggable) {
-      const currentPoint = this.getDifference({ x: mouseEvent.clientX, y: mouseEvent.clientY }, this.dragArea);
+      const currentPoint = this.getDifference(
+        { x: mouseEvent.clientX, y: mouseEvent.clientY },
+        this.dragArea
+      );
       const position = this.Axis.x
         ? { x: currentPoint.x - this.startPosition.x, y: this.startCell.y }
         : this.Axis.y
@@ -168,17 +207,23 @@ class AnimateDrag {
         bottom: mouseEvent.clientY + this.shiftMouseParent.bottom,
       };
 
-      if (position !== null && this.checkAvailablePoints(positionSubShift, this.cellFrame, this.Axis.y))
+      if (
+        position !== null &&
+        this.checkAvailablePoints(positionSubShift, this.cellFrame, this.Axis.y)
+      )
         this.setElementPosition(this.dragElement, position);
     }
   }
+
   watchCrossingList(mouseEvent) {
-    const drag = this.dragElementList[this.getDragElementId()];
+    const drag = this.findDragElement();
     this.moveDragElement(mouseEvent);
     const collision = this.dragDropZone.filter(({ item }) => {
       return (
-        this.checkIsCrossing(this.dragElement.getBoundingClientRect(), item.getBoundingClientRect()) &&
-        this.dragElement !== item
+        this.checkIsCrossing(
+          this.dragElement.getBoundingClientRect(),
+          item.getBoundingClientRect()
+        ) && this.dragElement !== item
       );
     })[0];
     if (collision && this.isDraggable) {
@@ -186,35 +231,38 @@ class AnimateDrag {
       const parentId = drag.parentId;
       collision.nestedId = drag.id;
       drag.parentId = collision.id;
-      this.dragDropZone[parentId].nestedId = null;
+      this.getParentCell(parentId).nestedId = null;
     }
   }
 
   setDefaultPosition() {
     this.dragElementList.forEach((item, key) => {
-      this.setElementPosition(item.item, this.getDistanceRectCoord(this.dragDropZone[key].item, item.item));
+      this.setElementPosition(
+        item.item,
+        this.getDistanceRectCoord(this.getParentCell(key).item, item.item)
+      );
     });
   }
 
   setDraggableBorders(mouseDown) {
+    const boundaries = this.getParentCell().item.getBoundingClientRect();
     this.shiftMouseParent = {
-      left: mouseDown.clientX - this.dragDropZone[this.startParent].item.getBoundingClientRect().left - 10,
-      right: this.dragDropZone[this.startParent].item.getBoundingClientRect().right - mouseDown.clientX - 10,
-      bottom: this.dragDropZone[this.startParent].item.getBoundingClientRect().bottom - mouseDown.clientY - 10,
-      top: mouseDown.clientY - this.dragDropZone[this.startParent].item.getBoundingClientRect().top - 10,
+      left: mouseDown.clientX - boundaries.left - 10,
+      right: boundaries.right - mouseDown.clientX - 10,
+      bottom: boundaries.bottom - mouseDown.clientY - 10,
+      top: mouseDown.clientY - boundaries.top - 10,
     };
   }
 
   dropListener = (e) => {
     e.preventDefault();
-    console.log('called');
     if (this.isDraggable) {
       this.dropDragElement();
     }
   };
+
   removeMouseUpListener = (e) => {
     e.preventDefault();
-    console.log('REMOVE');
     this.triggerMouseEvent(this.dragElement, 'mouseup');
     this.dragElement.removeEventListener('mouseup', this.dropListener);
   };
@@ -224,11 +272,16 @@ class AnimateDrag {
     mouseDown.preventDefault();
     this.setStartPosition(mouseDown);
     this.dragArea.addEventListener('mousemove', (mouseMove) => {
-      if (!this.getAvailableCells(this.emptyCell.id).includes(this.startParent)) return;
+      if (!this.getAvailableCells(this.emptyCell.id).includes(this.startParent))
+        return;
       this.watchCrossingList(mouseMove);
     });
-    this.dragElement.addEventListener('mouseleave', this.dropListener, { once: true });
-    this.dragElement.addEventListener('mouseup', this.dropListener, { once: true });
+    this.dragElement.addEventListener('mouseleave', this.dropListener, {
+      once: true,
+    });
+    this.dragElement.addEventListener('mouseup', this.dropListener, {
+      once: true,
+    });
   }
 
   triggerMouseEvent(node, eventType) {
@@ -241,16 +294,19 @@ class AnimateDrag {
 
   dropDragElement() {
     this.isDraggable = false;
-    const parent = this.dragElementList[this.getDragElementId()].parentId;
-    const topShift = this.getDistanceRectCoord(this.dragDropZone[parent].item, this.dragElement);
+    const element = this.findDragElement();
+    const topShift = this.getDistanceRectCoord(
+      this.getParentCell(element.parentId).item,
+      this.dragElement
+    );
     this.setElementPosition(this.dragElement, topShift);
-    this.setSingleTransition(this.dragElementList[this.getDragElementId()]);
-    console.log(this.emptyCell.id);
-    console.table(this.startParent);
-
-    if (parent !== this.startParent) {
-      this.emptyCell = this.dragDropZone[this.startParent];
-      this.dragDropZone[this.startParent].nestedId = null;
+    this.setSingleTransition(this.findDragElement());
+    // console.log(this.emptyCell.id);
+    // console.table(this.dragElementList);
+    this.checkSequence();
+    if (element.parentId !== this.startParent) {
+      this.emptyCell = this.getParentCell();
+      this.getParentCell().nestedId = null;
     }
   }
 }
