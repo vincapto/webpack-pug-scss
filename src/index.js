@@ -36,6 +36,7 @@ const selectSize = document.querySelector('.controlSelect');
 const resetButton = document.querySelector('.controlReset');
 const saveButton = document.querySelector('.controlSave');
 const loadButton = document.querySelector('.controlLoad');
+// const infoButton = document.querySelector('.controlInfo');
 const movesCountElement = document.querySelector('.movesCount');
 const soundCheck = document.querySelector('#soundCheck');
 const moveSound = document.getElementById('myAudio');
@@ -76,6 +77,7 @@ function fisherShuffle(arr) {
   while (--i > 0) {
     let randIndex = Math.floor(Math.random() * (i + 1));
     [arr[randIndex], arr[i]] = [arr[i], arr[randIndex]];
+    console.log(i + 1, randIndex + 1);
   }
   return arr;
 }
@@ -84,7 +86,12 @@ function shuffleArray(arrayLength) {
   const array = Array(arrayLength)
     .fill(0)
     .map((_, key) => key);
-  return fisherShuffle(array);
+  const flag = false;
+  let shuffled = [];
+  while (true) {
+    shuffled = fisherShuffle(array);
+    if (isSolvable(shuffled)) return shuffled;
+  }
 }
 
 const checkVictory = (list) => {
@@ -95,6 +102,22 @@ const checkVictory = (list) => {
     return a.id === a.parentId;
   });
   return isVictory;
+};
+
+const isSolvable = (arr) => {
+  //для каждого элемента массива
+  for (var kDisorder = 0, i = 1, len = arr.length - 1; i < len; i++) {
+    //узнаём сколько предшествующих элементов больше текущего
+    for (var j = i - 1; j >= 0; j--) {
+      //если один из предыдущих элементов больше - накручиваем счетчик
+      if (arr[j] > arr[i]) {
+        kDisorder++;
+      }
+    }
+  }
+
+  //если сумма вышла четной - комбинация имеет решение
+  return !(kDisorder % 2);
 };
 
 const puzzleListElement = document.querySelector('.puzzle__list');
@@ -201,6 +224,11 @@ const setGame = (loadedGame = [], empty = null) => {
     });
   });
 
+  // infoButton.addEventListener('click', () => {
+  //   console.log('BACK');
+  //   animateDrag.moveSolution();
+  // });
+
   window.addEventListener('resize', function (event) {
     if (puzzleListElement.clientWidth < 1100) {
       console.log('LESS');
@@ -209,4 +237,4 @@ const setGame = (loadedGame = [], empty = null) => {
   });
 };
 
-// setGame();
+setGame();

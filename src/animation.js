@@ -144,8 +144,10 @@ class AnimateDrag {
     return element.item.classList.contains(className);
   }
 
-  findDragElement() {
-    return this.dragElementList.find((a) => a.item === this.dragElement);
+  findDragElement(id = null) {
+    return id !== null
+      ? this.dragElementList.find((a) => a.id === id)
+      : this.dragElementList.find((a) => a.item === this.dragElement);
   }
 
   getDistanceRectCoord(...param) {
@@ -315,6 +317,39 @@ class AnimateDrag {
     // this.dragElement.removeEventListener('mouseup', this.mouseUpListener, true);
   }
 
+  moveSolution() {
+    this.isDraggable = false;
+    const { parentId, id, moveTo } = this.movesPathList.pop();
+    const element = this.findDragElement(id);
+    const parent = this.getParentCell(moveTo).item;
+    console.log(parentId, id, moveTo);
+    console.log(element, parent);
+
+    const topShift = this.getDistanceRectCoord(parent, element.item);
+    this.setElementPosition(element.item, topShift);
+    this.setSingleTransition(element);
+    // console.log(this.emptyCell.id);
+    // console.table(this.dragElementList);
+    // this.checkSequence();
+    this.emptyCell = this.dragDropZone[parentId];
+    this.dragDropZone[parentId].nestedId = null;
+    element.item.classList.add(this.transitionListClass);
+    element.item.addEventListener('transitionend', () => {
+      this.movesPathList.length !== 0 ? this.moveSolution() : 0;
+      element.item.classList.remove(this.transitionListClass);
+    });
+  }
+
+  movesPathList = [];
+
+  addMovesPathList = ({ parentId, item, id }) => {
+    this.movesPathList.push({
+      parentId,
+      id,
+      moveTo: this.startParent,
+    });
+  };
+
   dropDragElement() {
     this.isDraggable = false;
     const element = this.findDragElement();
@@ -328,6 +363,9 @@ class AnimateDrag {
     // console.table(this.dragElementList);
     this.checkSequence();
     if (element.parentId !== this.startParent) {
+      console.log(element);
+      this.addMovesPathList(element);
+      console.log(this.movesPathList);
       this.emptyCell = this.getParentCell();
       this.getParentCell().nestedId = null;
       this.movesCount++;
