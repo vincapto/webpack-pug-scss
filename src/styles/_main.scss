@@ -2,12 +2,65 @@ $primaryColor: #ffffff;
 
 $secondaryColor: darkslategray;
 
+.modal {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  display: none;
+  background-color: rgba($color: #000000, $alpha: 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.activeModal {
+  display: flex;
+}
+
+.blinkList {
+  background-color: green;
+}
+
+// @keyframes blinker {
+//   50% {
+//     opacity: 0;
+//   }
+//   100% {
+//     opacity: 1;
+//   }
+// }
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: white;
+  border-radius: 10px;
+  font-size: 25px;
+  padding: 10px;
+  // width: 50%;
+  min-height: 10vh;
+  z-index: 1000;
+  .scoreBoard {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    margin: 0;
+    padding: 0;
+    font-size: 22px;
+  }
+  p {
+    text-align: center;
+  }
+}
+
 html {
   margin: 0;
   padding: 0;
   font-family: generalFont;
 }
 body {
+  position: relative;
   margin: 0;
   padding: 0;
   background: #b8b8b8;
@@ -35,6 +88,7 @@ body {
 .board {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 10px;
   margin-top: 5px;
   padding: 10px;
@@ -66,11 +120,39 @@ body {
   }
 }
 
+.savedModal {
+  // display: none;
+  background-color: white;
+  padding: 5px;
+  font-size: 25px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  z-index: 1000;
+  opacity: 0;
+  border: 1px gray solid;
+  z-index: -1;
+  // transition: all 0.2s ease;
+  &.active {
+    z-index: 1000;
+    opacity: 1;
+    transition: all 0.4s ease;
+  }
+  &.hide {
+    display: none;
+  }
+}
+
 .btn {
   padding: 10px;
   background-color: white;
   border-radius: 5px;
   border: 1px gray solid;
+  @media only screen and (max-width: 600px) {
+    font-size: 12px;
+    padding: 3px;
+  }
   &:active {
     background: gray;
   }
@@ -85,6 +167,8 @@ select {
 
 .puzzle {
   &__list {
+    transition: all 0.2s ease;
+    // background-color: #b8b8b8;
     position: relative;
     // max-width: 100%;
     width: 100%;
@@ -118,6 +202,7 @@ select {
       height: 100%;
       box-sizing: border-box;
       margin: 0;
+      -webkit-user-select: none;
     }
   }
   &__cell {

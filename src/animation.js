@@ -19,6 +19,12 @@ class AnimateDrag {
   cellFrame = {};
   saveList = [];
 
+  resetCount(init = 0) {
+    this.movesCountElement(init);
+    this.movesCount = init;
+    console.log('CALL RESET', this.movesCount);
+  }
+
   getDivideRest(num) {
     const div = this.puzzleRowLength;
     switch ((num + 1) % div) {
@@ -51,6 +57,13 @@ class AnimateDrag {
     this.grabAnimationClass = grabClass;
   }
 
+  saveGameList() {
+    const sortedList = this.dragElementList.sort((a, b) => {
+      return a.id - b.id;
+    });
+    this.saveList = sortedList;
+  }
+
   checkSequence() {
     const sortedList = this.dragElementList.sort((a, b) => {
       return a.id - b.id;
@@ -60,6 +73,22 @@ class AnimateDrag {
     sortedList.some((a, key) => {
       return a.id === this.dragDropZone[key];
     });
+  }
+
+  isSolved() {
+    const order = this.dragElementList.filter((a) => {
+      if (a.id !== this.dragElementList.length - 1) {
+        return a.parentId === a.id;
+      } else return false;
+    });
+    // console.log(order, this.dragElementList.length);
+    // return Array(this.dragElementList)
+    //   .fill(0)
+    //   .map((a, key) => key)
+    //   .reduce((acc, next, ind) => {
+    //     return next !== order[ind] ? acc + 1 : acc;
+    //   }, 0);
+    return order.length === this.dragElementList.length - 1;
   }
 
   setInitInitialState() {
@@ -195,7 +224,8 @@ class AnimateDrag {
       : coord.left > frame.left && coord.right < frame.right;
   }
 
-  moveDragElement(mouseEvent, cell = {}) {
+  moveDragElement(Event, cell = {}) {
+    const mouseEvent = Event?.touches ? Event?.touches[0] : Event;
     if (this.isDraggable) {
       const currentPoint = this.getDifference(
         { x: mouseEvent.clientX, y: mouseEvent.clientY },
@@ -206,13 +236,13 @@ class AnimateDrag {
         : this.Axis.y
         ? { x: this.startCell.x, y: currentPoint.y - this.startPosition.y }
         : null;
+
       const positionSubShift = {
         left: mouseEvent.clientX - this.shiftMouseParent.left,
         right: mouseEvent.clientX + this.shiftMouseParent.right,
-        top: mouseEvent.y - this.shiftMouseParent.top,
+        top: mouseEvent.clientY - this.shiftMouseParent.top,
         bottom: mouseEvent.clientY + this.shiftMouseParent.bottom,
       };
-
       if (
         position !== null &&
         this.checkAvailablePoints(positionSubShift, this.cellFrame, this.Axis.y)
@@ -266,6 +296,7 @@ class AnimateDrag {
 
   setDraggableBorders(mouseDown) {
     const boundaries = this.getParentCell().item.getBoundingClientRect();
+    console.log('AAAAAAAAAAAAAA', boundaries);
     this.shiftMouseParent = {
       left: mouseDown.clientX - boundaries.left - 10,
       right: boundaries.right - mouseDown.clientX - 10,
@@ -276,38 +307,63 @@ class AnimateDrag {
 
   dropListener = (e) => {
     e.preventDefault();
+    console.log(`%c UP LISTENER`, 'font-size:25px; color:red;');
     if (this.isDraggable) {
       this.dropDragElement();
-    }
+    } else this.removeMouseUpListener();
   };
 
-  removeMouseUpListener = (e) => {
-    e.preventDefault();
-    this.triggerMouseEvent(this.dragElement, 'mouseup');
+  removeMouseUpListener = () => {
+    // e.preventDefault();
+    // this.triggerMouseEvent(this.dragElement, 'mouseup');
     this.dragElement.removeEventListener('mouseup', this.dropListener);
+    this.dragElement.removeEventListener('mouseleave', this.dropListener);
+    this.dragArea.removeEventListener('mousemove', this.moveHandler);
+    this.dragArea.removeEventListener('touchmove', this.moveHandler);
+    this.dragArea.removeEventListener('touchcancel', this.dropListener);
+    this.dragArea.removeEventListener('touchend', this.dropListener);
   };
 
-  startDragElementList(mouseDown, target) {
+  moveHandler = (mouseMove) => {
+    console.log(`%c MOVE LISTENER`, 'font-size:25px; color:red;');
+    if (!this.getAvailableCells(this.emptyCell.id).includes(this.startParent)) {
+      console.log('CANCEL-------------');
+      return;
+    }
+    this.watchCrossingList(mouseMove);
+  };
+
+  startDragElementList(Event, target) {
     this.dragElement = target;
-    mouseDown.preventDefault();
+
+    Event.preventDefault();
+    const mouseDown = Event?.touches ? Event?.touches[0] : Event;
+
+    if (!this.possibleMoves()) {
+      console.log('NOT POSSIBEL');
+      return;
+    }
+
     this.setStartPosition(mouseDown);
-    this.dragArea.addEventListener('mousemove', (mouseMove) => {
-      if (
-        !this.getAvailableCells(this.emptyCell.id).includes(this.startParent)
-      ) {
-        // console.log('_____-------NOU');
-        return;
-      }
-      // console.log('AVALIBALE');
-      this.watchCrossingList(mouseMove);
-    });
+
+    this.dragArea.addEventListener('touchmove', this.moveHandler);
+    this.dragArea.addEventListener('mousemove', this.moveHandler);
+
     this.dragElement.addEventListener('mouseleave', this.dropListener, {
+      once: true,
+    });
+
+    this.dragElement.addEventListener('touchcancel', this.dropListener, {
+      once: true,
+    });
+    this.dragElement.addEventListener('touchend', this.dropListener, {
       once: true,
     });
     this.dragElement.addEventListener('mouseup', this.dropListener, {
       once: true,
     });
   }
+  callVictory;
 
   triggerMouseEvent(node, eventType) {
     console.log('MOVING');
@@ -350,6 +406,30 @@ class AnimateDrag {
     });
   };
 
+  getAvailableMoves = (position) => {
+    console.log('POSITION', position);
+    const length = this.dragElementList.length;
+    const row = Math.sqrt(length);
+    const direction = [row, -row];
+    (position + 1) % this.row !== 0 ? direction.push(1) : 0;
+    position % this.row !== 0 ? direction.push(-1) : 0;
+    return direction
+      .map((a) => {
+        console.log(a + position);
+        return a + position;
+      })
+      .filter((b) => b >= 0 && b < length);
+  };
+
+  possibleMoves() {
+    const element = this.findDragElement();
+    const moves = this.getAvailableMoves(this.emptyCell.id);
+    console.log('-------------', this.emptyCell.id);
+    const parent = this.getParentCell(element.parentId).id;
+    // this.dragDropZone[index];
+    return moves.includes(element.parentId);
+  }
+
   dropDragElement() {
     this.isDraggable = false;
     const element = this.findDragElement();
@@ -364,13 +444,16 @@ class AnimateDrag {
     this.checkSequence();
     if (element.parentId !== this.startParent) {
       console.log(element);
-      this.addMovesPathList(element);
-      console.log(this.movesPathList);
+      // this.addMovesPathList(element);
+      // console.log(this.movesPathList);
       this.emptyCell = this.getParentCell();
       this.getParentCell().nestedId = null;
       this.movesCount++;
       this.movesCountElement(this.movesCount);
-    }
+      this.callVictory(this.isSolved());
+      this.removeMouseUpListener();
+      console.log(`%c${this.isSolved()}`, 'font-size:25px');
+    } else this.removeMouseUpListener();
   }
 }
 
