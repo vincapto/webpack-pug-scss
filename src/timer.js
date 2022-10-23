@@ -61,10 +61,13 @@ export class Timer {
     ++this.total;
   }
 
-  getEndTime() {
-    return `${this.show(parseInt(this.total / 60))}:${this.show(
-      this.total % 60
-    )} `;
+  getEndTime(shown = false) {
+    const count = shown
+      ? this.total > 0
+        ? this.total - 1
+        : this.total
+      : this.total;
+    return `${this.show(parseInt(count / 60))}:${this.show(count % 60)} `;
   }
 
   getTotal() {

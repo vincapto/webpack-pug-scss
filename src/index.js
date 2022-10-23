@@ -1,6 +1,6 @@
 import './styles/index.scss';
 import { Solution } from './solve';
-import { getBody } from './body';
+import { getBody, createNotification } from './body';
 const body = document.querySelector('body');
 body.innerHTML = getBody();
 
@@ -39,11 +39,13 @@ const createPuzzleCell = (element = '', order = '') => {
     </div>
   `;
 };
+
 const createPopup = (time, moves) => {
   return `
     <div class='popup'>
+    <div class='closePopup'></div>
     <p>«Hooray! You solved the puzzle in <b>${time}</b> and <b>${moves}</b> moves!»</p>
-    <p>click anywhere to close</p>
+   
     </div>
   `;
 };
@@ -61,11 +63,11 @@ const createLeaderBoard = (list) => {
       : ['Board is empty'];
   return `
     <div class='popup'>
+     <div class='closePopup'></div>
     <h3>Leader board</h3>
     <ul class="scoreBoard">
       ${result.join('')}
     </ul>
-      <p>click anywhere to close</p>
       </div>
     `;
 };
@@ -86,6 +88,9 @@ const createPuzzleItemList = (array) => {
 
 const selectSize = document.querySelector('.controlSelect');
 const shuffleButton = document.querySelector('.controlShuffle');
+const showRulesElement = document.querySelector('.showRules');
+const alarmCheck = document.querySelector('#alarmCheck');
+
 const resetButton = document.querySelector('.controlReset');
 const saveButton = document.querySelector('.controlSave');
 const loadButton = document.querySelector('.controlLoad');
@@ -96,6 +101,16 @@ const moveSound = document.getElementById('myAudio');
 const modal = document.querySelector('.modal');
 const puzzleListElement = document.querySelector('.puzzle__list');
 const savedModal = document.querySelector('.savedModal');
+
+function showRules() {
+  const loaded = JSON.parse(localStorage.getItem('rules'));
+  if (loaded === null || loaded === true) {
+    modal.classList.toggle('activeModal');
+    modal.innerHTML = createNotification();
+  } else alarmCheck.checked = loaded;
+}
+
+showRules();
 
 let animateDrag = null;
 let solutionShuffle = [];
@@ -117,8 +132,12 @@ function playAudio() {
 
 let arrayLength = 9;
 
+alarmCheck.addEventListener('change', (event) => {
+  localStorage.setItem('rules', JSON.stringify(event.target.checked));
+});
 selectSize.addEventListener('change', (event) => {
   arrayLength = event.target.value ** 2;
+  timer.clearCount();
   setGame();
   console.log(arrayLength);
 });
@@ -136,9 +155,12 @@ resetButton.addEventListener('click', (event) => {
   timer.startCount();
 });
 
-modal.addEventListener('click', () => {
-  modal.classList.remove('activeModal');
-  callVictory();
+modal.addEventListener('click', (e) => {
+  const closePopup = document.querySelector('.closePopup');
+  if (modal === e.target || closePopup === e.target) {
+    modal.classList.remove('activeModal');
+    callVictory();
+  }
 });
 
 infoButton.addEventListener('click', (event) => {
@@ -368,7 +390,15 @@ const changeMoveElement = (count) => {
   movesCountElement.innerHTML = `Moves ${count}`;
 };
 
+function windowListener(event) {
+  if (puzzleListElement.clientWidth < 1100) {
+    animateDrag.setResizePosition();
+    console.log('LESS');
+  } else console.log('more');
+}
+
 const setGame = (loadedGame = [], empty = null, movesLoaded = null) => {
+  window.removeEventListener('resize', windowListener);
   const shuffledArray =
     loadedGame.length !== 0
       ? Array(arrayLength)
@@ -462,12 +492,7 @@ const setGame = (loadedGame = [], empty = null, movesLoaded = null) => {
   //   animateDrag.moveSolution();
   // });
 
-  window.addEventListener('resize', function (event) {
-    if (puzzleListElement.clientWidth < 1100) {
-      animateDrag.setResizePosition();
-      console.log('LESS');
-    } else console.log('more');
-  });
+  window.addEventListener('resize', windowListener);
 };
 // console.log(browser);
 function victoryPopup() {
@@ -478,9 +503,9 @@ function showModal(victory = false) {
   if (victory) {
     timer.stopCount();
     modal.classList.toggle('activeModal');
-    modal.innerHTML = createPopup(timer.getEndTime(), showCount);
+    modal.innerHTML = createPopup(timer.getEndTime(true), showCount);
     saveLeaderBoard({
-      time: timer.getEndTime(),
+      time: timer.getEndTime(true),
       count: showCount,
       total: timer.getTotal(),
     });

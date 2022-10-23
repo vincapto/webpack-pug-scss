@@ -30,7 +30,12 @@ $secondaryColor: darkslategray;
 //   }
 // }
 
+h3 {
+  margin: 5px;
+}
+
 .popup {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -40,7 +45,28 @@ $secondaryColor: darkslategray;
   padding: 10px;
   // width: 50%;
   min-height: 10vh;
+  margin: 10px;
+  box-sizing: border-box;
   z-index: 1000;
+  & .closePopup {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    // padding: 2px;
+    width: 25px;
+    height: 25px;
+    background-color: gray;
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    &::after {
+      content: 'x';
+      font-size: 16px;
+      color: white;
+    }
+  }
   .scoreBoard {
     display: flex;
     flex-direction: column;
@@ -51,6 +77,19 @@ $secondaryColor: darkslategray;
   }
   p {
     text-align: center;
+  }
+}
+
+ul {
+  margin: 5px 5px;
+  padding: 10px;
+}
+
+.rules {
+  // list-style: none;
+  max-width: 1000px;
+  li {
+    font-size: 16px;
   }
 }
 
@@ -157,7 +196,23 @@ body {
     background: gray;
   }
 }
-
+@media only screen and (max-width: 600px) {
+  h3 {
+    font-size: 25px;
+  }
+  .player {
+    padding: 5px;
+  }
+  label {
+    font-size: 12px;
+    padding: 3px;
+  }
+  .rules {
+    li {
+      font-size: 12px;
+    }
+  }
+}
 select {
   outline: none;
   &:focus {
