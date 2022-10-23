@@ -113,7 +113,7 @@ body {
   box-sizing: border-box;
 }
 
-.player {
+label {
   background: white;
   padding: 10px;
   box-sizing: border-box;
@@ -128,7 +128,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-top: 5px;
   padding: 10px;
   background: white;
@@ -149,7 +149,7 @@ body {
 }
 
 .move-list-item {
-  transition: all 0.2s ease;
+  transition: all 0.1s ease;
 }
 .hide {
   display: none;

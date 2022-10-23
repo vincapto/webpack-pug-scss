@@ -6,7 +6,6 @@ class AnimateDrag {
   movesCountElement;
   grabAnimationClass = [['move-grab'], ['move-transition']];
   transitionListClass = 'move-list-item';
-  elementInitialState = { x: 0, y: 0 };
   startPosition = { x: 0, y: 0, offsetTop: 0, initialId: 0 };
   dragElement = null;
   dragArea = null;
@@ -18,6 +17,29 @@ class AnimateDrag {
   shiftMouseParent = 0;
   cellFrame = {};
   saveList = [];
+  callVictory;
+  transitionGoing = false;
+  isMoved = false;
+
+  constructor(dragArea, dragDropZone, dragElementList, prop) {
+    this.dragArea = dragArea;
+    this.dragDropZone = dragDropZone;
+    this.dragElementList = dragElementList;
+
+    this.updateProps(prop);
+  }
+
+  updateProps(prop) {
+    console.log(prop.emptyCell, prop.loadedGame);
+    this.movesCountElement = prop.movesCountElement;
+    this.resetCount(prop.movesLoaded);
+    this.emptyCell = prop.emptyCell;
+    this.setDefaultPosition(prop.loadedGame);
+    this.puzzleRowLength = prop.puzzleRowLength;
+    this.puzzleLength = prop.arrayLength;
+    this.callVictory = prop.callVictory;
+    this.checkSequence();
+  }
 
   resetCount(init = 0) {
     this.movesCountElement(init);
@@ -46,33 +68,17 @@ class AnimateDrag {
     return arr;
   }
 
-  constructor(dragArea, dragDropZone, dragElementList) {
-    this.dragArea = dragArea;
-    this.dragDropZone = dragDropZone;
-    this.dragElementList = dragElementList;
-  }
-
   setTransitionClass(listClass, grabClass) {
     this.transitionListClass = listClass;
     this.grabAnimationClass = grabClass;
-  }
-
-  saveGameList() {
-    const sortedList = this.dragElementList.sort((a, b) => {
-      return a.id - b.id;
-    });
-    this.saveList = sortedList;
   }
 
   checkSequence() {
     const sortedList = this.dragElementList.sort((a, b) => {
       return a.id - b.id;
     });
-    console.table(sortedList);
     this.saveList = sortedList;
-    sortedList.some((a, key) => {
-      return a.id === this.dragDropZone[key];
-    });
+    console.table(sortedList);
   }
 
   isSolved() {
@@ -81,21 +87,7 @@ class AnimateDrag {
         return a.parentId === a.id;
       } else return false;
     });
-    // console.log(order, this.dragElementList.length);
-    // return Array(this.dragElementList)
-    //   .fill(0)
-    //   .map((a, key) => key)
-    //   .reduce((acc, next, ind) => {
-    //     return next !== order[ind] ? acc + 1 : acc;
-    //   }, 0);
     return order.length === this.dragElementList.length - 1;
-  }
-
-  setInitInitialState() {
-    this.elementInitialState = {
-      x: this.dragElement.offsetLeft,
-      y: dragElement.offsetTop,
-    };
   }
 
   setStartPosition(mouseDown) {
@@ -133,24 +125,8 @@ class AnimateDrag {
     element.style.top = y + 'px';
   }
 
-  toggleElementClass(
-    item,
-    reverse = false,
-    [add, remove] = this.grabAnimationClass
-  ) {
-    [add, remove] = !reverse ? [add, remove] : [remove, add];
-    item.classList.add(...add);
-    item.classList.remove(...remove);
-  }
   getDifference(pos, item) {
     return { x: pos.x - item.offsetLeft, y: pos.y - item.offsetTop };
-  }
-
-  checkElementCrossing(arr, element) {
-    const filtered = arr.filter(({ zone: drop }) => {
-      return this.checkIsCrossing(element, zone);
-    });
-    return filtered.length !== 0 ? filtered[0].id : null;
   }
 
   checkIsCrossing(element, drop) {
@@ -166,11 +142,8 @@ class AnimateDrag {
     element.item.classList.add(className);
     element.item.addEventListener('transitionend', () => {
       element.item.classList.remove(className);
+      this.transitionGoing = false;
     });
-  }
-
-  checkIsContainsTransition(element, className = this.transitionListClass) {
-    return element.item.classList.contains(className);
   }
 
   findDragElement(id = null) {
@@ -193,8 +166,6 @@ class AnimateDrag {
       Number(element.style[prop].replace('px', ''))
     );
   }
-
-  setEmptyCell() {}
 
   getAxis(e) {
     return {
@@ -264,11 +235,19 @@ class AnimateDrag {
     })[0];
     if (collision && this.isDraggable) {
       if (collision.nestedId !== null) return;
-      const parentId = drag.parentId;
-      collision.nestedId = drag.id;
-      drag.parentId = collision.id;
-      this.getParentCell(parentId).nestedId = null;
+      this.swapCell(drag, collision);
+      // const parentId = drag.parentId;
+      // collision.nestedId = drag.id;
+      // drag.parentId = collision.id;
+      // this.getParentCell(parentId).nestedId = null;
     }
+  }
+
+  swapCell(drag, collision) {
+    const parentId = drag.parentId;
+    collision.nestedId = drag.id;
+    drag.parentId = collision.id;
+    this.getParentCell(parentId).nestedId = null;
   }
 
   setDefaultPosition(loadList = []) {
@@ -296,7 +275,6 @@ class AnimateDrag {
 
   setDraggableBorders(mouseDown) {
     const boundaries = this.getParentCell().item.getBoundingClientRect();
-    console.log('AAAAAAAAAAAAAA', boundaries);
     this.shiftMouseParent = {
       left: mouseDown.clientX - boundaries.left - 10,
       right: boundaries.right - mouseDown.clientX - 10,
@@ -314,8 +292,6 @@ class AnimateDrag {
   };
 
   removeMouseUpListener = () => {
-    // e.preventDefault();
-    // this.triggerMouseEvent(this.dragElement, 'mouseup');
     this.dragElement.removeEventListener('mouseup', this.dropListener);
     this.dragElement.removeEventListener('mouseleave', this.dropListener);
     this.dragArea.removeEventListener('mousemove', this.moveHandler);
@@ -326,88 +302,43 @@ class AnimateDrag {
 
   moveHandler = (mouseMove) => {
     console.log(`%c MOVE LISTENER`, 'font-size:25px; color:red;');
+    this.isMoved = true;
     if (!this.getAvailableCells(this.emptyCell.id).includes(this.startParent)) {
-      console.log('CANCEL-------------');
       return;
     }
     this.watchCrossingList(mouseMove);
   };
 
   startDragElementList(Event, target) {
+    console.log('START');
+    if (this.transitionGoing) return;
     this.dragElement = target;
-
     Event.preventDefault();
     const mouseDown = Event?.touches ? Event?.touches[0] : Event;
-
     if (!this.possibleMoves()) {
-      console.log('NOT POSSIBEL');
+      console.log('Cancel move');
       return;
     }
-
     this.setStartPosition(mouseDown);
 
     this.dragArea.addEventListener('touchmove', this.moveHandler);
-    this.dragArea.addEventListener('mousemove', this.moveHandler);
-
-    this.dragElement.addEventListener('mouseleave', this.dropListener, {
-      once: true,
-    });
-
     this.dragElement.addEventListener('touchcancel', this.dropListener, {
       once: true,
     });
     this.dragElement.addEventListener('touchend', this.dropListener, {
       once: true,
     });
+
+    this.dragArea.addEventListener('mousemove', this.moveHandler);
+    this.dragElement.addEventListener('mouseleave', this.dropListener, {
+      once: true,
+    });
     this.dragElement.addEventListener('mouseup', this.dropListener, {
       once: true,
     });
   }
-  callVictory;
-
-  triggerMouseEvent(node, eventType) {
-    console.log('MOVING');
-    let clickEvent = document.createEvent('MouseEvents');
-    clickEvent.initEvent(eventType, true, true);
-    node.dispatchEvent(clickEvent);
-    // this.dragElement.removeEventListener('mouseup', this.mouseUpListener, true);
-  }
-
-  moveSolution() {
-    this.isDraggable = false;
-    const { parentId, id, moveTo } = this.movesPathList.pop();
-    const element = this.findDragElement(id);
-    const parent = this.getParentCell(moveTo).item;
-    console.log(parentId, id, moveTo);
-    console.log(element, parent);
-
-    const topShift = this.getDistanceRectCoord(parent, element.item);
-    this.setElementPosition(element.item, topShift);
-    this.setSingleTransition(element);
-    // console.log(this.emptyCell.id);
-    // console.table(this.dragElementList);
-    // this.checkSequence();
-    this.emptyCell = this.dragDropZone[parentId];
-    this.dragDropZone[parentId].nestedId = null;
-    element.item.classList.add(this.transitionListClass);
-    element.item.addEventListener('transitionend', () => {
-      this.movesPathList.length !== 0 ? this.moveSolution() : 0;
-      element.item.classList.remove(this.transitionListClass);
-    });
-  }
-
-  movesPathList = [];
-
-  addMovesPathList = ({ parentId, item, id }) => {
-    this.movesPathList.push({
-      parentId,
-      id,
-      moveTo: this.startParent,
-    });
-  };
 
   getAvailableMoves = (position) => {
-    console.log('POSITION', position);
     const length = this.dragElementList.length;
     const row = Math.sqrt(length);
     const direction = [row, -row];
@@ -422,37 +353,30 @@ class AnimateDrag {
   };
 
   possibleMoves() {
-    const element = this.findDragElement();
     const moves = this.getAvailableMoves(this.emptyCell.id);
-    console.log('-------------', this.emptyCell.id);
-    const parent = this.getParentCell(element.parentId).id;
-    // this.dragDropZone[index];
-    return moves.includes(element.parentId);
+    return moves.includes(this.findDragElement().parentId);
   }
 
   dropDragElement() {
     this.isDraggable = false;
+    this.transitionGoing = true;
     const element = this.findDragElement();
+    if (!this.isMoved) this.swapCell(element, this.emptyCell);
     const topShift = this.getDistanceRectCoord(
       this.getParentCell(element.parentId).item,
       this.dragElement
     );
+    this.isMoved = false;
     this.setElementPosition(this.dragElement, topShift);
     this.setSingleTransition(this.findDragElement());
-    // console.log(this.emptyCell.id);
-    // console.table(this.dragElementList);
     this.checkSequence();
     if (element.parentId !== this.startParent) {
-      console.log(element);
-      // this.addMovesPathList(element);
-      // console.log(this.movesPathList);
       this.emptyCell = this.getParentCell();
       this.getParentCell().nestedId = null;
       this.movesCount++;
       this.movesCountElement(this.movesCount);
       this.callVictory(this.isSolved());
       this.removeMouseUpListener();
-      console.log(`%c${this.isSolved()}`, 'font-size:25px');
     } else this.removeMouseUpListener();
   }
 }
